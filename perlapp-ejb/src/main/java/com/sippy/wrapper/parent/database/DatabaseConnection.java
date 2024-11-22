@@ -26,15 +26,4 @@ public class DatabaseConnection {
     Query query = entityManager.createNativeQuery("SELECT * FROM tnbs", TnbDao.class);
     return query.getResultList();
   }
-
-  public Optional<TnbDao> getTnb(String tnb){
-    Query query = entityManager.createNativeQuery("SELECT * FROM tnbs WHERE tnb = :tnb", TnbDao.class);
-    query.setParameter("tnb", tnb);
-    try {
-      TnbDao tnbDao = (TnbDao) query.getSingleResult();
-      return Optional.of(tnbDao);
-    }catch (NoResultException exception){
-      return Optional.empty();
-    }
-  }
 }
