@@ -1,13 +1,18 @@
 package com.sippy.wrapper.parent;
 
 import com.sippy.wrapper.parent.database.DatabaseConnection;
+import com.sippy.wrapper.parent.database.dao.TnbDao;
+import com.sippy.wrapper.parent.request.GetTnbListRequest;
 import com.sippy.wrapper.parent.request.JavaTestRequest;
 import com.sippy.wrapper.parent.response.JavaTestResponse;
-import java.util.*;
-import javax.ejb.EJB;
-import javax.ejb.Stateless;
+import com.sippy.wrapper.parent.response.Tnb;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import javax.ejb.EJB;
+import javax.ejb.Stateless;
+import java.util.*;
+import java.util.stream.Stream;
 
 @Stateless
 public class WrappedMethods {
@@ -35,6 +40,28 @@ public class WrappedMethods {
     jsonResponse.put("faultString", "Method success");
     jsonResponse.put("something", response);
 
+    return jsonResponse;
+  }
+
+  @RpcMethod(name = "getTnbList", description = "Get the TnbList")
+  public Map<String, Object> getTnbList(GetTnbListRequest request){
+    LOGGER.info("Received getTnbList request for tnb: {}", request.number());
+    final List<TnbDao> allTnbs = databaseConnection.getAllTnbs();
+    final List<TnbDao> filteredTnbs = allTnbs.stream().filter(tnbDao -> !List.of("D146", "D218", "D248").contains(tnbDao.getTnb())).toList();
+
+    final Optional<TnbDao> maybeRequestedTnb = allTnbs.stream().filter(tnbDao -> request.number() != null && request.number().equals(tnbDao.getTnb())).findFirst();
+
+    final TnbDao alwaysAddedTnb = new TnbDao();
+    alwaysAddedTnb.setTnb("D001");
+    alwaysAddedTnb.setName("Deutsche Telekom");
+    final List<TnbDao> completeTnbs = Stream.concat(filteredTnbs.stream(), Stream.of(alwaysAddedTnb)).toList();
+    final List<TnbDao> sortedTnbs = completeTnbs.stream().sorted(Comparator.comparing(a -> a.getName().toLowerCase())).toList();
+
+    final List<Tnb> tnbs = sortedTnbs.stream().map(filteredTnb -> new Tnb(maybeRequestedTnb.isPresent() && maybeRequestedTnb.get().getTnb().equals(filteredTnb.getTnb()), filteredTnb.getName(), filteredTnb.getTnb())).toList();
+    final Map<String, Object> jsonResponse = new HashMap<>();
+    jsonResponse.put("faultCode", "200");
+    jsonResponse.put("faultString", "Method success");
+    jsonResponse.put("tnbs", tnbs);
     return jsonResponse;
   }
 }
